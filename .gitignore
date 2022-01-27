@@ -1,0 +1,9 @@
+*
+!*.*
+!*/
+!Makefile
+!Dockerfile
+*.log
+*.exe
+vendor/
+test/
