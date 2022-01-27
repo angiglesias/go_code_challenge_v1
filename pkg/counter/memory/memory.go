@@ -8,6 +8,7 @@ import (
 	"sync/atomic"
 
 	"challenge/pkg/counter"
+	"challenge/pkg/logging"
 )
 
 type MemoryCounter struct {
@@ -19,6 +20,7 @@ func NewCounter() counter.Counter { return new(MemoryCounter) }
 // AddVisit register the visit to a page
 func (mc *MemoryCounter) AddVisit(ctx context.Context, url, visitorID string) error {
 	// context is ignored as this implementation is non-blocking
+	logging.Tracef("[Counter] Registering visit from user %s to page %s", visitorID, url)
 	// search if page is available
 	page, err := mc.loadPage(url)
 	if err != nil {
@@ -38,6 +40,7 @@ func (mc *MemoryCounter) AddVisit(ctx context.Context, url, visitorID string) er
 // Visits will query the distinct visits to a page
 func (mc *MemoryCounter) Visits(ctx context.Context, url string) (uint64, error) {
 	// context is ignored as this implementation is non-blocking
+	logging.Tracef("[Counter] Recovering distinct visitors to page %s", url)
 	page, err := mc.loadPage(url)
 	if err != nil {
 		return 0, fmt.Errorf("error recovering visits for page %s: %w", url, err)

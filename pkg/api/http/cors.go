@@ -1,6 +1,10 @@
 package http
 
-import "net/http"
+import (
+	"net/http"
+
+	"challenge/pkg/logging"
+)
 
 // Very simple, free pass cors implementation to accept preflight requests and third party domains API comsumption on browsers
 func SetupCorsMiddleware(next http.Handler) http.Handler {
@@ -8,6 +12,8 @@ func SetupCorsMiddleware(next http.Handler) http.Handler {
 		func(rw http.ResponseWriter, r *http.Request) {
 			// respond preflight OPTIONS request
 			if r.Method == http.MethodOptions {
+				logging.Debugf("[CORS] Processing preflight request")
+				// write CORS headers to response
 				rw.Header().Set("Access-Control-Allow-Origin", "*")                                                                                   // wildcard origin
 				rw.Header().Set("Access-Control-Allow-Credentials", "true")                                                                           //
 				rw.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")                                                    // allow most common http methods
