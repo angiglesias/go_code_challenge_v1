@@ -3,7 +3,10 @@ package http
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
+	"net/url"
+	"path"
 	"strings"
 
 	"challenge/pkg/api"
@@ -47,8 +50,15 @@ func (ca *CounterAPIHandler) RegisterVisit(rw http.ResponseWriter, req *http.Req
 		rw.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	// TODO sanitize page url
-	if err := ca.counterSvc.AddVisit(req.Context(), visit.Page, visit.VisitorID); err != nil {
+	// parse and sanitize page url
+	page, err := parseURL(visit.Page)
+	if err != nil {
+		logging.Errorf("[API:RegisterVisit] Page URL is invalid")
+		rw.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	// register visit
+	if err := ca.counterSvc.AddVisit(req.Context(), page, visit.VisitorID); err != nil {
 		logging.Errorf("[API:RegisterVisit] Error counting visit to page %s: %v", visit.Page, err)
 		rw.WriteHeader(http.StatusInternalServerError)
 		return
@@ -73,6 +83,13 @@ func (ca *CounterAPIHandler) GetVisits(rw http.ResponseWriter, req *http.Request
 		rw.WriteHeader(http.StatusBadRequest)
 		return
 	}
+	// parse and sanitize url
+	url, err := parseURL(url)
+	if err != nil {
+		logging.Errorf("[API:GetVisits] Page URL is invalid")
+		rw.WriteHeader(http.StatusBadRequest)
+		return
+	}
 	// recover visits
 	visits, err := ca.counterSvc.Visits(req.Context(), url)
 	if err != nil {
@@ -92,4 +109,24 @@ func (ca *CounterAPIHandler) GetVisits(rw http.ResponseWriter, req *http.Request
 	rw.Header().Set("Content-Type", "application/json; charset=utf-8")
 	rw.WriteHeader(http.StatusOK)
 	json.NewEncoder(rw).Encode(resp)
+}
+
+// parseURL parses and sanitizes page url
+func parseURL(page string) (string, error) {
+	parsed, err := url.Parse(page)
+	if err != nil {
+		return "", fmt.Errorf("invalid url: %w", err)
+	}
+	// sanitize path as in https://go.dev/src/net/http/server.go?s=40985:41006#L1407
+	if parsed.Path != "" {
+		parsed.Path = path.Clean(parsed.Path)
+	} else {
+		// if no path is provided, count the visit to "/"
+		parsed.Path = "/"
+	}
+	// discard fragment and query
+	parsed.Fragment = ""
+	parsed.RawQuery = ""
+	// return sanitized URL
+	return parsed.String(), nil
 }
